@@ -57,3 +57,17 @@ def test_older_project_gets_safe_straightening_defaults() -> None:
     assert loaded.straighten_tolerance_mm == 1.0
     assert loaded.preserve_rounded_sections
     assert loaded.minimum_straight_length_mm == 40.0
+
+
+def test_live_streamlit_session_with_old_processing_object_is_migrated() -> None:
+    class LegacyProcessing:
+        invert = True
+        simplify = False
+        keep_holes = False
+
+    loaded = ProcessingParameters.migrate_runtime(LegacyProcessing())
+    assert loaded.invert
+    assert not loaded.simplify
+    assert not loaded.keep_holes
+    assert loaded.preserve_rounded_sections
+    assert loaded.minimum_straight_length_mm == 40.0

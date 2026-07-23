@@ -85,6 +85,10 @@ def cached_processing(image_content: bytes, params_json: str):
 def initialize_state() -> None:
     if "project" not in st.session_state:
         st.session_state.project = CNCProject()
+    else:
+        st.session_state.project.processing = ProcessingParameters.migrate_runtime(
+            st.session_state.project.processing
+        )
     st.session_state.setdefault("image_content", None)
     st.session_state.setdefault("image_digest", None)
     st.session_state.setdefault("image_rgb", None)

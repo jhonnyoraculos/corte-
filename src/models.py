@@ -222,6 +222,24 @@ class ProcessingParameters:
     keep_holes: bool = True
 
     @classmethod
+    def migrate_runtime(cls, value: Any) -> "ProcessingParameters":
+        """Atualiza objetos mantidos por sessões anteriores do Streamlit."""
+        field_names = set(cls.__dataclass_fields__)
+        if isinstance(value, cls) and all(
+            hasattr(value, field_name) for field_name in field_names
+        ):
+            return value
+        if isinstance(value, dict):
+            raw = {key: item for key, item in value.items() if key in field_names}
+        else:
+            raw = {
+                field_name: getattr(value, field_name)
+                for field_name in field_names
+                if hasattr(value, field_name)
+            }
+        return cls.from_dict(raw)
+
+    @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ProcessingParameters":
         if not isinstance(data, dict):
             raise ValueError("processing deve ser um objeto.")

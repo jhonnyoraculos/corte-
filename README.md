@@ -35,7 +35,7 @@ O aplicativo não se conecta, não envia programas e não controla uma CNC.
 - Análise conservadora de uma referência MPR textual.
 - Pós-processador MPR por placeholders, bloqueado quando a configuração é
   insuficiente ou a geometria tem erros.
-- 39 testes automatizados, sem depender de imagens externas.
+- 40 testes automatizados, sem depender de imagens externas.
 
 ## Instalação no Windows
 
