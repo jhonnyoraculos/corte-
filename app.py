@@ -34,7 +34,7 @@ from src.models import (
     ProcessingParameters,
     ValidationSeverity,
 )
-from src.preview import build_vector_preview
+from src.preview import build_dxf_preview, build_vector_preview
 from src.utils.files import (
     UploadValidationError,
     load_json_upload,
@@ -771,14 +771,8 @@ def render_dxf_export(project: CNCProject, issues) -> None:
     warnings = [
         issue for issue in issues if issue.severity == ValidationSeverity.WARNING
     ]
-    confirm = True
-    if warnings:
-        confirm = st.checkbox(
-            f"Revisei e aceito exportar com {len(warnings)} aviso(s)."
-        )
-    blocked = has_critical_errors(issues) or not confirm
-    if blocked:
-        st.info("Resolva os erros e confirme os avisos para liberar o DXF.")
+    if has_critical_errors(issues):
+        st.info("Resolva os erros para visualizar e liberar o DXF.")
         return
     try:
         dxf_data = generate_dxf_bytes(
@@ -789,6 +783,30 @@ def render_dxf_export(project: CNCProject, issues) -> None:
                 include_start_points=include_start,
             ),
         )
+        preview = build_dxf_preview(dxf_data)
+        st.markdown("#### Pré-visualização do DXF gerado")
+        st.caption(
+            "Esta visualização foi criada relendo o arquivo DXF final que será baixado."
+        )
+        st.plotly_chart(
+            preview.figure,
+            use_container_width=True,
+            key=f"dxf_preview_{version}_{include_reference}_{include_start}",
+        )
+        metric1, metric2, metric3 = st.columns(3)
+        metric1.metric("Versão relida", preview.version)
+        metric2.metric("Polilinhas", preview.polyline_count)
+        metric3.metric("Entidades", preview.entity_count)
+        st.caption("Camadas presentes: " + ", ".join(preview.layers))
+
+        confirm = True
+        if warnings:
+            confirm = st.checkbox(
+                f"Revisei a pré-visualização e aceito exportar com {len(warnings)} aviso(s)."
+            )
+        if not confirm:
+            st.info("Revise a pré-visualização e confirme o aviso para baixar o DXF.")
+            return
         st.download_button(
             f"Baixar DXF {version}",
             data=dxf_data,

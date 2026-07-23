@@ -7,6 +7,7 @@ from ezdxf import units
 import pytest
 
 from src.exporters.dxf_exporter import DXFExportOptions, generate_dxf_bytes
+from src.preview import build_dxf_preview
 from tests.helpers import valid_project
 
 
@@ -63,3 +64,23 @@ def test_dxf_preserves_coordinates_and_dimensions(version: str) -> None:
     assert max(x for x, _ in points) == pytest.approx(100)
     assert min(y for _, y in points) == pytest.approx(0)
     assert max(y for _, y in points) == pytest.approx(50)
+
+
+@pytest.mark.parametrize("version", ["R12", "R2000"])
+def test_dxf_preview_reads_the_final_exported_file(version: str) -> None:
+    data = generate_dxf_bytes(
+        valid_project(),
+        DXFExportOptions(
+            version=version,
+            include_reference=True,
+            include_start_points=True,
+        ),
+    )
+    preview = build_dxf_preview(data)
+    assert preview.version == version
+    assert preview.polyline_count == 2
+    assert preview.point_count == 2
+    assert preview.entity_count >= 5
+    assert {"CUT_OUTER", "REFERENCE", "START_POINTS"} <= set(preview.layers)
+    assert preview.bounds == pytest.approx((0.0, 0.0, 100.0, 50.0))
+    assert len(preview.figure.data) >= 4

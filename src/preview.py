@@ -1,9 +1,24 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+import io
+
+import ezdxf
 import plotly.graph_objects as go
 
 from .geometry import bounding_box, dimensions
 from .models import CNCContour
+
+
+@dataclass(slots=True)
+class DXFPreviewResult:
+    figure: go.Figure
+    version: str
+    entity_count: int
+    polyline_count: int
+    point_count: int
+    layers: list[str]
+    bounds: tuple[float, float, float, float]
 
 
 def build_vector_preview(
@@ -131,3 +146,140 @@ def build_vector_preview(
     figure.update_xaxes(title="X (mm)", scaleanchor="y", scaleratio=1)
     figure.update_yaxes(title="Y (mm)")
     return figure
+
+
+def _read_dxf_bytes(data: bytes):
+    if not data:
+        raise ValueError("O DXF gerado está vazio.")
+    last_error: Exception | None = None
+    for encoding in ("utf-8", "cp1252", "latin-1"):
+        try:
+            return ezdxf.read(io.StringIO(data.decode(encoding)))
+        except (UnicodeDecodeError, ezdxf.DXFError, ValueError) as exc:
+            last_error = exc
+    raise ValueError("Não foi possível reler o DXF gerado.") from last_error
+
+
+def build_dxf_preview(data: bytes) -> DXFPreviewResult:
+    """Relê o arquivo DXF final e desenha as entidades efetivamente exportadas."""
+    document = _read_dxf_bytes(data)
+    modelspace = document.modelspace()
+    figure = go.Figure()
+    colors = {
+        "CUT_OUTER": "#2563eb",
+        "CUT_INNER": "#ef4444",
+        "REFERENCE": "#64748b",
+        "START_POINTS": "#16a34a",
+    }
+    seen_legends: set[tuple[str, str]] = set()
+    layers: set[str] = set()
+    all_points: list[tuple[float, float]] = []
+    entity_count = 0
+    polyline_count = 0
+    point_count = 0
+
+    for entity in modelspace:
+        entity_count += 1
+        entity_type = entity.dxftype()
+        layer = str(entity.dxf.layer)
+        layers.add(layer)
+        color = colors.get(layer, "#7c3aed")
+
+        points: list[tuple[float, float]] = []
+        closed = False
+        if entity_type == "LWPOLYLINE":
+            points = [
+                (float(point[0]), float(point[1]))
+                for point in entity.get_points("xy")
+            ]
+            closed = bool(entity.closed)
+        elif entity_type == "POLYLINE":
+            points = [
+                (float(vertex.dxf.location.x), float(vertex.dxf.location.y))
+                for vertex in entity.vertices
+            ]
+            closed = bool(entity.is_closed)
+        elif entity_type == "LINE":
+            points = [
+                (float(entity.dxf.start.x), float(entity.dxf.start.y)),
+                (float(entity.dxf.end.x), float(entity.dxf.end.y)),
+            ]
+
+        if points:
+            polyline_count += 1
+            all_points.extend(points)
+            displayed = points + [points[0]] if closed and len(points) > 1 else points
+            xs, ys = zip(*displayed)
+            legend_key = (layer, "line")
+            figure.add_trace(
+                go.Scatter(
+                    x=xs,
+                    y=ys,
+                    mode="lines",
+                    line={
+                        "color": color,
+                        "width": 2,
+                        "dash": "dot" if layer == "REFERENCE" else "solid",
+                    },
+                    name=layer,
+                    legendgroup=layer,
+                    showlegend=legend_key not in seen_legends,
+                    hovertemplate=(
+                        f"Camada: {layer}<br>Entidade: {entity_type}"
+                        "<br>X=%{x:.3f} mm<br>Y=%{y:.3f} mm<extra></extra>"
+                    ),
+                )
+            )
+            seen_legends.add(legend_key)
+        elif entity_type == "POINT":
+            point = (float(entity.dxf.location.x), float(entity.dxf.location.y))
+            all_points.append(point)
+            point_count += 1
+            legend_key = (layer, "point")
+            figure.add_trace(
+                go.Scatter(
+                    x=[point[0]],
+                    y=[point[1]],
+                    mode="markers",
+                    marker={
+                        "color": color,
+                        "size": 9,
+                        "symbol": "diamond" if layer == "START_POINTS" else "cross",
+                    },
+                    name=layer,
+                    legendgroup=layer,
+                    showlegend=legend_key not in seen_legends,
+                    hovertemplate=(
+                        f"Camada: {layer}<br>Entidade: POINT"
+                        "<br>X=%{x:.3f} mm<br>Y=%{y:.3f} mm<extra></extra>"
+                    ),
+                )
+            )
+            seen_legends.add(legend_key)
+
+    if not all_points:
+        raise ValueError("O DXF não contém entidades geométricas visualizáveis.")
+    xs = [point[0] for point in all_points]
+    ys = [point[1] for point in all_points]
+    bounds = (min(xs), min(ys), max(xs), max(ys))
+    width = bounds[2] - bounds[0]
+    height = bounds[3] - bounds[1]
+    figure.update_layout(
+        title=f"DXF relido — {width:.3f} × {height:.3f} mm",
+        template="plotly_white",
+        height=600,
+        margin={"l": 20, "r": 20, "t": 55, "b": 20},
+        legend={"orientation": "h"},
+        hovermode="closest",
+    )
+    figure.update_xaxes(title="X (mm)", scaleanchor="y", scaleratio=1)
+    figure.update_yaxes(title="Y (mm)")
+    return DXFPreviewResult(
+        figure=figure,
+        version=document.acad_release,
+        entity_count=entity_count,
+        polyline_count=polyline_count,
+        point_count=point_count,
+        layers=sorted(layers),
+        bounds=bounds,
+    )

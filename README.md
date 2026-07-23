@@ -28,11 +28,12 @@ O aplicativo não se conecta, não envia programas e não controla uma CNC.
   origem, caixa delimitadora e comparação da linha compensada com a original.
 - Validação geométrica e contra limites configurados da máquina.
 - DXF R12 e R2000 em memória, com camadas distintas.
+- Pré-visualização do DXF final, relido com `ezdxf` antes do download.
 - Importação e exportação do projeto em JSON, sem incorporar a imagem.
 - Análise conservadora de uma referência MPR textual.
 - Pós-processador MPR por placeholders, bloqueado quando a configuração é
   insuficiente ou a geometria tem erros.
-- 29 testes automatizados, sem depender de imagens externas.
+- 33 testes automatizados, sem depender de imagens externas.
 
 ## Instalação no Windows
 
@@ -109,6 +110,8 @@ possui suporte padronizado a `$INSUNITS`; por isso o aplicativo registra
 milímetros.
 
 O arquivo é montado em memória e relido nos testes com `ezdxf`.
+A aba de exportação também relê esse mesmo conteúdo e mostra as entidades e
+camadas finais em uma pré-visualização Plotly antes de liberar o download.
 
 ## MPR: limitações e configuração
 
