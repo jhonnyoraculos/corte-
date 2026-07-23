@@ -35,7 +35,7 @@ O aplicativo não se conecta, não envia programas e não controla uma CNC.
 - Análise conservadora de uma referência MPR textual.
 - Pós-processador MPR por placeholders, bloqueado quando a configuração é
   insuficiente ou a geometria tem erros.
-- 38 testes automatizados, sem depender de imagens externas.
+- 39 testes automatizados, sem depender de imagens externas.
 
 ## Instalação no Windows
 
@@ -105,6 +105,12 @@ informada. Por padrão, a tolerância é calculada como o tamanho físico de doi
 pixels, limitada ao intervalo de 0,2 a 3 mm; esse cálculo pode ser desligado para
 entrada manual. Se a aproximação produzir polígono inválido ou alterar mais de 5%
 da área, o contorno anterior é preservado.
+
+Com **Preservar curvas e cantos arredondados**, a aproximação forte só substitui
+trechos cujo comprimento supere o mínimo configurado. Os trechos menores entre
+essas retas mantêm os pontos suavizados, evitando transformar um raio em um
+chanfro. O valor inicial de 40 mm é adequado para separar laterais longas de
+transições curtas, mas deve ser comparado às dimensões reais da peça.
 
 ## DXF
 

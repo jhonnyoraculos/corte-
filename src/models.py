@@ -217,6 +217,8 @@ class ProcessingParameters:
     straighten_lines: bool = True
     straighten_auto_tolerance: bool = True
     straighten_tolerance_mm: float = 1.0
+    preserve_rounded_sections: bool = True
+    minimum_straight_length_mm: float = 40.0
     keep_holes: bool = True
 
     @classmethod

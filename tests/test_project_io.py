@@ -49,7 +49,11 @@ def test_older_project_gets_safe_straightening_defaults() -> None:
     data.pop("straighten_lines")
     data.pop("straighten_auto_tolerance")
     data.pop("straighten_tolerance_mm")
+    data.pop("preserve_rounded_sections")
+    data.pop("minimum_straight_length_mm")
     loaded = ProcessingParameters.from_dict(data)
     assert loaded.straighten_lines
     assert loaded.straighten_auto_tolerance
     assert loaded.straighten_tolerance_mm == 1.0
+    assert loaded.preserve_rounded_sections
+    assert loaded.minimum_straight_length_mm == 40.0

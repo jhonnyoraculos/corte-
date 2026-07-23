@@ -110,7 +110,14 @@ def extract_contours(
                 else params.straighten_tolerance_mm
             )
             points_mm = straighten_points(
-                points_mm, straightening_tolerance, closed=True
+                points_mm,
+                straightening_tolerance,
+                closed=True,
+                minimum_straight_length_mm=(
+                    params.minimum_straight_length_mm
+                    if params.preserve_rounded_sections
+                    else 0.0
+                ),
             )
         if len(points_mm) < 3:
             continue

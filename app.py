@@ -506,6 +506,25 @@ def render_contour_controls(
                         "endireitam mais, mas podem alterar curvas."
                     ),
                 )
+            params.preserve_rounded_sections = st.checkbox(
+                "Preservar curvas e cantos arredondados",
+                value=params.preserve_rounded_sections,
+                help=(
+                    "Endireita somente trechos longos. Transições menores continuam "
+                    "com os pontos suavizados da curva."
+                ),
+            )
+            if params.preserve_rounded_sections:
+                params.minimum_straight_length_mm = st.number_input(
+                    "Comprimento mínimo para considerar uma reta (mm)",
+                    min_value=1.0,
+                    value=params.minimum_straight_length_mm,
+                    step=1.0,
+                    help=(
+                        "Trechos menores que este valor não serão transformados "
+                        "em uma única reta."
+                    ),
+                )
 
 
 def stage_contours(project: CNCProject) -> None:

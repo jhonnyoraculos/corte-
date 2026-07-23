@@ -120,6 +120,7 @@ def straighten_points(
     tolerance_mm: float,
     closed: bool = True,
     max_area_change_ratio: float = 0.05,
+    minimum_straight_length_mm: float = 0.0,
 ) -> list[Point]:
     """Substitui ruído raster quase linear por segmentos retos controlados.
 
@@ -128,7 +129,46 @@ def straighten_points(
     """
     if tolerance_mm <= 0 or len(points) < 3:
         return list(points)
-    straightened = simplify_points(points, tolerance_mm, closed)
+    candidates = simplify_points(points, tolerance_mm, closed)
+    straightened = candidates
+    if closed and minimum_straight_length_mm > 0 and len(candidates) >= 3:
+        # approxPolyDP devolve vértices existentes e preserva sua ordem. Rotacionar
+        # o contorno para o primeiro candidato permite recuperar cada trecho
+        # original sem confundir a passagem pelo fim da lista.
+        first_index = min(
+            range(len(points)),
+            key=lambda index: math.dist(points[index], candidates[0]),
+        )
+        rotated = points[first_index:] + points[:first_index]
+        candidate_positions = [0]
+        search_start = 1
+        mapping_failed = False
+        for candidate in candidates[1:]:
+            if search_start >= len(rotated):
+                mapping_failed = True
+                break
+            position = min(
+                range(search_start, len(rotated)),
+                key=lambda index: math.dist(rotated[index], candidate),
+            )
+            if math.dist(rotated[position], candidate) > 1e-3:
+                mapping_failed = True
+                break
+            candidate_positions.append(position)
+            search_start = position + 1
+
+        if not mapping_failed:
+            selective: list[Point] = []
+            segment_ends = candidate_positions[1:] + [len(rotated)]
+            for start, end in zip(candidate_positions, segment_ends):
+                start_point = rotated[start]
+                end_point = rotated[end] if end < len(rotated) else rotated[0]
+                selective.append(start_point)
+                chord_length = math.dist(start_point, end_point)
+                if chord_length < minimum_straight_length_mm:
+                    selective.extend(rotated[start + 1 : end])
+            straightened = remove_duplicate_points(selective)
+
     minimum_points = 3 if closed else 2
     if len(straightened) < minimum_points:
         return list(points)

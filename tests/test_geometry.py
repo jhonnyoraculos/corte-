@@ -124,6 +124,53 @@ def test_straightening_preserves_a_rounded_contour() -> None:
     assert max(ys) - min(ys) == pytest.approx(100.0, abs=2.0)
 
 
+def test_selective_straightening_keeps_rounded_corner_points() -> None:
+    points: list[tuple[float, float]] = []
+    points.extend(
+        (float(x), 0.4 if x % 10 else 0.0) for x in range(20, 81, 5)
+    )
+    points.extend(
+        (
+            80.0 + 20.0 * math.cos(math.radians(angle)),
+            20.0 + 20.0 * math.sin(math.radians(angle)),
+        )
+        for angle in range(-80, 1, 10)
+    )
+    points.extend((100.0, float(y)) for y in range(25, 81, 5))
+    points.extend(
+        (
+            80.0 + 20.0 * math.cos(math.radians(angle)),
+            80.0 + 20.0 * math.sin(math.radians(angle)),
+        )
+        for angle in range(10, 91, 10)
+    )
+    points.extend((float(x), 100.0) for x in range(75, 19, -5))
+    points.extend(
+        (
+            20.0 + 20.0 * math.cos(math.radians(angle)),
+            80.0 + 20.0 * math.sin(math.radians(angle)),
+        )
+        for angle in range(100, 181, 10)
+    )
+    points.extend((0.0, float(y)) for y in range(75, 19, -5))
+    points.extend(
+        (
+            20.0 + 20.0 * math.cos(math.radians(angle)),
+            20.0 + 20.0 * math.sin(math.radians(angle)),
+        )
+        for angle in range(190, 271, 10)
+    )
+
+    global_fit = straighten_points(points, 2.0)
+    selective_fit = straighten_points(
+        points, 2.0, minimum_straight_length_mm=40.0
+    )
+
+    assert len(selective_fit) > len(global_fit)
+    assert not any(25.0 < x < 75.0 and abs(y) < 1.0 for x, y in selective_fit)
+    assert sum(x > 80.0 and y < 20.0 for x, y in selective_fit) >= 3
+
+
 def test_straightening_tolerance_adapts_to_image_resolution() -> None:
     assert recommended_straightening_tolerance(1.0) == 2.0
     assert recommended_straightening_tolerance(10.0) == 0.2
