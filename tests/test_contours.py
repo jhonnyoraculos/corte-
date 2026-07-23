@@ -1,0 +1,78 @@
+from __future__ import annotations
+
+import cv2
+import numpy as np
+import pytest
+
+from src.contour_processing import extract_contours
+from src.image_processing import process_image
+from src.models import ProcessingParameters
+from src.utils.files import UploadValidationError, validate_image_upload
+
+
+def extraction_params() -> ProcessingParameters:
+    return ProcessingParameters(
+        min_area_mm2=0,
+        min_perimeter_mm=0,
+        ignore_small_noise=False,
+        simplify=False,
+    )
+
+
+def test_external_and_hole_hierarchy() -> None:
+    image = np.zeros((200, 200), dtype=np.uint8)
+    cv2.rectangle(image, (20, 20), (180, 180), 255, thickness=-1)
+    cv2.circle(image, (100, 100), 35, 0, thickness=-1)
+    contours = extract_contours(image, 1.0, extraction_params())
+    assert len(contours) == 2
+    outer = next(contour for contour in contours if not contour.is_hole)
+    hole = next(contour for contour in contours if contour.is_hole)
+    assert outer.hierarchy_level == 0
+    assert hole.hierarchy_level == 1
+    assert hole.parent_id == outer.contour_id
+
+
+def test_two_separate_parts_are_external() -> None:
+    image = np.zeros((200, 300), dtype=np.uint8)
+    cv2.rectangle(image, (10, 20), (100, 150), 255, thickness=-1)
+    cv2.rectangle(image, (180, 30), (280, 170), 255, thickness=-1)
+    contours = extract_contours(image, 1.0, extraction_params())
+    assert len(contours) == 2
+    assert all(not contour.is_hole for contour in contours)
+
+
+def test_synthetic_images_process_without_external_files() -> None:
+    images: list[np.ndarray] = []
+    rectangle = np.full((150, 150, 3), 255, dtype=np.uint8)
+    cv2.rectangle(rectangle, (20, 20), (130, 120), (0, 0, 0), -1)
+    images.append(rectangle)
+    circle = np.full((150, 150, 3), 255, dtype=np.uint8)
+    cv2.circle(circle, (75, 75), 50, (0, 0, 0), -1)
+    images.append(circle)
+    open_contour = np.full((150, 150, 3), 255, dtype=np.uint8)
+    cv2.polylines(
+        open_contour,
+        [np.array([(20, 120), (20, 20), (120, 20)])],
+        False,
+        (0, 0, 0),
+        3,
+    )
+    images.append(open_contour)
+    noisy = rectangle.copy()
+    rng = np.random.default_rng(42)
+    indexes = rng.integers(0, 150, size=(200, 2))
+    noisy[indexes[:, 0], indexes[:, 1]] = rng.integers(
+        0, 256, size=(200, 3), dtype=np.uint8
+    )
+    images.append(noisy)
+    for image in images:
+        result = process_image(image, ProcessingParameters())
+        assert result.binary.shape == image.shape[:2]
+        assert result.edges.dtype == np.uint8
+
+
+def test_malformed_image_upload_is_rejected() -> None:
+    with pytest.raises(UploadValidationError):
+        validate_image_upload("falsa.png", b"isto nao e uma imagem")
+    with pytest.raises(UploadValidationError):
+        validate_image_upload("imagem.exe", b"qualquer conteudo")

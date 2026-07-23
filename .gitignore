@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.streamlit/secrets.toml
+*.log
+*.dxf
+*.mpr
+*.cnc.json
+.DS_Store
+Thumbs.db
