@@ -36,11 +36,7 @@ def image_quality_warnings(image_rgb: np.ndarray) -> list[str]:
         warnings.append(
             "A imagem tem baixa resolução; detalhes pequenos podem não ser detectados."
         )
-    gray = (
-        cv2.cvtColor(image_rgb, cv2.COLOR_RGB2GRAY)
-        if params.convert_grayscale
-        else np.max(image_rgb, axis=2).astype(np.uint8)
-    )
+    gray = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2GRAY)
     focus_score = float(cv2.Laplacian(gray, cv2.CV_64F).var())
     if focus_score < 50.0:
         warnings.append(
@@ -60,7 +56,11 @@ def process_image(
     if image_rgb.ndim != 3 or image_rgb.shape[2] != 3:
         raise ValueError("A imagem de entrada deve estar no formato RGB.")
 
-    gray = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2GRAY)
+    gray = (
+        cv2.cvtColor(image_rgb, cv2.COLOR_RGB2GRAY)
+        if params.convert_grayscale
+        else np.max(image_rgb, axis=2).astype(np.uint8)
+    )
     working = gray.copy()
     if params.invert:
         working = cv2.bitwise_not(working)

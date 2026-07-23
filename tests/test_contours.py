@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from src.contour_processing import extract_contours
-from src.image_processing import process_image
+from src.image_processing import image_quality_warnings, process_image
 from src.models import ProcessingParameters
 from src.utils.files import UploadValidationError, validate_image_upload
 
@@ -69,6 +69,28 @@ def test_synthetic_images_process_without_external_files() -> None:
         result = process_image(image, ProcessingParameters())
         assert result.binary.shape == image.shape[:2]
         assert result.edges.dtype == np.uint8
+
+
+def test_uploaded_image_quality_check_does_not_depend_on_processing_params() -> None:
+    image = np.full((320, 640, 3), 255, dtype=np.uint8)
+    cv2.rectangle(image, (100, 80), (540, 240), (0, 0, 0), thickness=-1)
+    warnings = image_quality_warnings(image)
+    assert isinstance(warnings, list)
+
+
+def test_processing_can_use_brightest_channel_when_grayscale_is_disabled() -> None:
+    image = np.zeros((20, 20, 3), dtype=np.uint8)
+    image[:, :, 1] = 200
+    result = process_image(
+        image,
+        ProcessingParameters(
+            convert_grayscale=False,
+            gaussian_blur=False,
+            threshold_mode="manual",
+            manual_threshold=100,
+        ),
+    )
+    assert np.all(result.grayscale == 200)
 
 
 def test_malformed_image_upload_is_rejected() -> None:
