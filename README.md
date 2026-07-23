@@ -21,6 +21,8 @@ O aplicativo não se conecta, não envia programas e não controla uma CNC.
   contornos externos, furos e ilhas.
 - Filtros por área/perímetro, maior peça, fechamento de gaps, simplificação e
   suavização opcional.
+- Ajuste de retas que remove ondulações do raster com tolerância em milímetros e
+  proteção contra deformação excessiva da área.
 - Seleção, exclusão, inversão, fechamento, translação, rotação, espelhamento e
   mudança de origem.
 - Offset interno/externo com Shapely para raio de ferramenta, kerf ou valor livre.
@@ -33,7 +35,7 @@ O aplicativo não se conecta, não envia programas e não controla uma CNC.
 - Análise conservadora de uma referência MPR textual.
 - Pós-processador MPR por placeholders, bloqueado quando a configuração é
   insuficiente ou a geometria tem erros.
-- 33 testes automatizados, sem depender de imagens externas.
+- 38 testes automatizados, sem depender de imagens externas.
 
 ## Instalação no Windows
 
@@ -93,6 +95,16 @@ cartesiano.
 
 Fotografias com perspectiva produzem escala variável e não são corrigidas neste
 MVP. Para precisão dimensional, use captura ortogonal, scanner ou imagem técnica.
+
+### Endireitar trechos quase retos
+
+Na etapa de contornos, essa opção executa uma aproximação geométrica final depois
+da suavização e simplificação. Ela substitui degraus e pequenas ondulações dos
+pixels por segmentos retos, desde que o desvio permaneça abaixo da tolerância
+informada. Por padrão, a tolerância é calculada como o tamanho físico de dois
+pixels, limitada ao intervalo de 0,2 a 3 mm; esse cálculo pode ser desligado para
+entrada manual. Se a aproximação produzir polígono inválido ou alterar mais de 5%
+da área, o contorno anterior é preservado.
 
 ## DXF
 

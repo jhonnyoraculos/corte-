@@ -11,9 +11,11 @@ from .geometry import (
     contour_perimeter,
     orientation,
     pixel_to_mm,
+    recommended_straightening_tolerance,
     remove_duplicate_points,
     simplify_points,
     smooth_points,
+    straighten_points,
 )
 from .models import CNCContour, ProcessingParameters
 
@@ -93,13 +95,22 @@ def extract_contours(
         perimeter = contour_perimeter(points_mm)
         if area < min_area or perimeter < min_perimeter:
             continue
+        if params.smooth:
+            points_mm = smooth_points(
+                points_mm, params.smoothing_window, closed=True
+            )
         if params.simplify:
             points_mm = simplify_points(
                 points_mm, params.simplify_tolerance_mm, closed=True
             )
-        if params.smooth:
-            points_mm = smooth_points(
-                points_mm, params.smoothing_window, closed=True
+        if params.straighten_lines:
+            straightening_tolerance = (
+                recommended_straightening_tolerance(pixels_per_mm)
+                if params.straighten_auto_tolerance
+                else params.straighten_tolerance_mm
+            )
+            points_mm = straighten_points(
+                points_mm, straightening_tolerance, closed=True
             )
         if len(points_mm) < 3:
             continue

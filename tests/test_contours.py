@@ -41,6 +41,27 @@ def test_two_separate_parts_are_external() -> None:
     assert all(not contour.is_hole for contour in contours)
 
 
+def test_extraction_straightens_pixelated_diagonal_automatically() -> None:
+    image = np.zeros((220, 220), dtype=np.uint8)
+    cv2.fillPoly(
+        image,
+        [np.array([(20, 200), (200, 20), (200, 200)], dtype=np.int32)],
+        255,
+    )
+    raw_params = extraction_params()
+    raw_params.straighten_lines = False
+    raw = extract_contours(image, 1.0, raw_params)
+
+    straight_params = extraction_params()
+    straight_params.straighten_lines = True
+    straight_params.straighten_auto_tolerance = True
+    straight = extract_contours(image, 1.0, straight_params)
+
+    assert len(raw) == len(straight) == 1
+    assert len(straight[0].points_mm) == 3
+    assert len(straight[0].points_mm) < len(raw[0].points_mm)
+
+
 def test_synthetic_images_process_without_external_files() -> None:
     images: list[np.ndarray] = []
     rectangle = np.full((150, 150, 3), 255, dtype=np.uint8)

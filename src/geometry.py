@@ -115,6 +115,47 @@ def simplify_points(points: list[Point], tolerance_mm: float, closed: bool = Tru
     )
 
 
+def straighten_points(
+    points: list[Point],
+    tolerance_mm: float,
+    closed: bool = True,
+    max_area_change_ratio: float = 0.05,
+) -> list[Point]:
+    """Substitui ruído raster quase linear por segmentos retos controlados.
+
+    O desvio máximo é limitado por ``tolerance_mm``. Para contornos fechados, uma
+    aproximação inválida ou que altere mais de 5% da área é rejeitada.
+    """
+    if tolerance_mm <= 0 or len(points) < 3:
+        return list(points)
+    straightened = simplify_points(points, tolerance_mm, closed)
+    minimum_points = 3 if closed else 2
+    if len(straightened) < minimum_points:
+        return list(points)
+    if closed:
+        original = Polygon(points)
+        candidate = Polygon(straightened)
+        if (
+            original.is_empty
+            or not original.is_valid
+            or candidate.is_empty
+            or not candidate.is_valid
+        ):
+            return list(points)
+        if original.area > 0:
+            area_change = abs(candidate.area - original.area) / original.area
+            if area_change > max_area_change_ratio:
+                return list(points)
+    return straightened
+
+
+def recommended_straightening_tolerance(pixels_per_mm: float) -> float:
+    """Retorna tolerância equivalente a dois pixels, entre 0,2 e 3 mm."""
+    if pixels_per_mm <= 0:
+        raise ValueError("A escala deve ser maior que zero.")
+    return max(0.2, min(3.0, 2.0 / pixels_per_mm))
+
+
 def smooth_points(points: list[Point], window: int = 3, closed: bool = True) -> list[Point]:
     if len(points) < 4 or window < 2:
         return list(points)

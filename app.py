@@ -19,6 +19,7 @@ from src.geometry import (
     offset_contour,
     pixels_per_mm_from_points,
     pixels_per_mm_from_width,
+    recommended_straightening_tolerance,
     reverse_contour,
     transform_contours,
 )
@@ -431,7 +432,9 @@ def stage_processing(project: CNCProject) -> None:
     )
 
 
-def render_contour_controls(params: ProcessingParameters) -> None:
+def render_contour_controls(
+    params: ProcessingParameters, pixels_per_mm: float
+) -> None:
     with st.sidebar.expander("Controles de contorno", expanded=True):
         params.ignore_small_noise = st.checkbox(
             "Ignorar pequenos ruídos", value=params.ignore_small_noise
@@ -469,6 +472,40 @@ def render_contour_controls(params: ProcessingParameters) -> None:
         params.smoothing_window = st.slider(
             "Janela de suavização", 2, 9, params.smoothing_window
         )
+        params.straighten_lines = st.checkbox(
+            "Endireitar trechos quase retos",
+            value=params.straighten_lines,
+            help=(
+                "Remove pequenas ondulações dos pixels e substitui o trecho por "
+                "segmentos retos dentro da tolerância informada."
+            ),
+        )
+        if params.straighten_lines:
+            pixel_size_mm = 1.0 / pixels_per_mm
+            recommended_tolerance = recommended_straightening_tolerance(
+                pixels_per_mm
+            )
+            params.straighten_auto_tolerance = st.checkbox(
+                "Calcular tolerância pela resolução",
+                value=params.straighten_auto_tolerance,
+                help="Usa o equivalente físico a dois pixels, limitado a 3 mm.",
+            )
+            if params.straighten_auto_tolerance:
+                st.caption(
+                    f"1 pixel ≈ {pixel_size_mm:.3f} mm. "
+                    f"Tolerância automática: {recommended_tolerance:.2f} mm."
+                )
+            else:
+                params.straighten_tolerance_mm = st.number_input(
+                    "Tolerância para ajuste de retas (mm)",
+                    min_value=0.01,
+                    value=params.straighten_tolerance_mm,
+                    step=0.10,
+                    help=(
+                        "Desvio máximo que será tratado como ruído. Valores maiores "
+                        "endireitam mais, mas podem alterar curvas."
+                    ),
+                )
 
 
 def stage_contours(project: CNCProject) -> None:
@@ -479,7 +516,9 @@ def stage_contours(project: CNCProject) -> None:
     if not project.calibration.is_defined:
         st.warning("Defina a escala na etapa 2 antes de extrair.")
         return
-    render_contour_controls(project.processing)
+    render_contour_controls(
+        project.processing, project.calibration.pixels_per_mm or 1.0
+    )
     current_signature = processing_signature(project)
     if (
         project.contours

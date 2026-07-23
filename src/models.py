@@ -214,6 +214,9 @@ class ProcessingParameters:
     simplify_tolerance_mm: float = 0.10
     smooth: bool = False
     smoothing_window: int = 3
+    straighten_lines: bool = True
+    straighten_auto_tolerance: bool = True
+    straighten_tolerance_mm: float = 1.0
     keep_holes: bool = True
 
     @classmethod

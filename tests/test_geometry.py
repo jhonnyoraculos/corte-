@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import pytest
 
 from src.geometry import (
@@ -12,8 +14,10 @@ from src.geometry import (
     pixel_to_mm,
     pixels_per_mm_from_points,
     pixels_per_mm_from_width,
+    recommended_straightening_tolerance,
     remove_duplicate_points,
     simplify_points,
+    straighten_points,
 )
 from tests.helpers import rectangle_contour
 
@@ -81,6 +85,49 @@ def test_polygon_simplification_preserves_shape() -> None:
             )
         ]
     )[2] == pytest.approx(2.0)
+
+
+def test_straightening_replaces_raster_wobble_with_one_straight_segment() -> None:
+    noisy_polygon = [
+        (0.0, 0.0),
+        (5.0, 5.8),
+        (10.0, 9.2),
+        (15.0, 15.7),
+        (20.0, 19.1),
+        (25.0, 25.5),
+        (30.0, 30.0),
+        (30.0, 60.0),
+        (0.0, 60.0),
+    ]
+    straightened = straighten_points(noisy_polygon, 2.0)
+    assert straightened == [
+        (0.0, 0.0),
+        (30.0, 30.0),
+        (30.0, 60.0),
+        (0.0, 60.0),
+    ]
+
+
+def test_straightening_preserves_a_rounded_contour() -> None:
+    circle = [
+        (
+            50.0 + 50.0 * math.cos(math.radians(angle)),
+            50.0 + 50.0 * math.sin(math.radians(angle)),
+        )
+        for angle in range(0, 360, 2)
+    ]
+    straightened = straighten_points(circle, 2.0)
+    assert 8 <= len(straightened) < len(circle)
+    xs = [point[0] for point in straightened]
+    ys = [point[1] for point in straightened]
+    assert max(xs) - min(xs) == pytest.approx(100.0, abs=2.0)
+    assert max(ys) - min(ys) == pytest.approx(100.0, abs=2.0)
+
+
+def test_straightening_tolerance_adapts_to_image_resolution() -> None:
+    assert recommended_straightening_tolerance(1.0) == 2.0
+    assert recommended_straightening_tolerance(10.0) == 0.2
+    assert recommended_straightening_tolerance(0.1) == 3.0
 
 
 def test_self_intersection_detection() -> None:
